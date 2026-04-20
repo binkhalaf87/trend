@@ -236,6 +236,7 @@ model Trend {
   userTrends       UserTrend[]
   alerts           Alert[]
   influencerMatches InfluencerMatch[]
+  history          TrendHistory[]
 
   @@unique([titleEn])
   @@index([category, status])
@@ -432,4 +433,36 @@ model InfluencerMatch {
   @@unique([trendId, influencerId])
   @@index([trendId, matchScore(sort: Desc)])
   @@map("influencer_matches")
+}
+
+// ─── 8. TrendHistory (نقاط بيانات تاريخية للكشف عن الشذوذ) ──────────────────
+model TrendHistory {
+  id             String   @id @default(cuid())
+  trendId        String
+  recordedAt     DateTime @default(now())
+  signalStrength Int      @default(0)
+  searchVolume   Int      @default(0)
+  socialMentions Int      @default(0)
+  growthRate     Float    @default(0)
+
+  trend          Trend    @relation(fields: [trendId], references: [id], onDelete: Cascade)
+
+  @@index([trendId, recordedAt(sort: Desc)])
+  @@map("trend_history")
+}
+
+// ─── 9. CollectorRun (سجل تشغيل الـ Cron Jobs) ───────────────────────────────
+model CollectorRun {
+  id          String    @id @default(cuid())
+  source      String    // "GOOGLE_TRENDS" | "REDDIT" | "PINTEREST" | "ANALYZE" | "ALERTS"
+  status      String    // "RUNNING" | "SUCCESS" | "FAILED" | "PARTIAL"
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  itemsFound  Int       @default(0)
+  itemsSaved  Int       @default(0)
+  errorMsg    String?   @db.Text
+  metadata    Json?
+
+  @@index([source, startedAt(sort: Desc)])
+  @@map("collector_runs")
 }
