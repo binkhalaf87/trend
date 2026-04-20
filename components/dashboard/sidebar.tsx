@@ -8,6 +8,7 @@ import {
   FileText,
   Bell,
   Settings,
+  CreditCard,
   LogOut,
   ChevronLeft,
 } from "lucide-react";
@@ -16,10 +17,11 @@ import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
-  { href: "/trends", label: "الترندات", icon: TrendingUp },
-  { href: "/content", label: "المحتوى", icon: FileText },
-  { href: "/alerts", label: "التنبيهات", icon: Bell },
-  { href: "/settings", label: "الإعدادات", icon: Settings },
+  { href: "/trends",    label: "الترندات",    icon: TrendingUp },
+  { href: "/content",   label: "المحتوى",     icon: FileText },
+  { href: "/alerts",    label: "التنبيهات",   icon: Bell },
+  { href: "/billing",   label: "الاشتراك",    icon: CreditCard },
+  { href: "/settings",  label: "الإعدادات",   icon: Settings },
 ];
 
 export function Sidebar() {

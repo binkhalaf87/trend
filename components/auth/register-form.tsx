@@ -1,88 +1,116 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, User, Store, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { GoogleButton } from "@/components/auth/google-button";
+import { OtpForm } from "@/components/auth/otp-form";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
+type Step = "form" | "otp";
+
 export function RegisterForm() {
+  const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
   const supabase = createSupabaseBrowserClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !name.trim()) return;
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name } },
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          shouldCreateUser: true,
+          data: { name: name.trim() },
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+        },
       });
       if (error) throw error;
-      toast({ title: "تم إنشاء الحساب!", description: "تحقق من بريدك لتأكيد الحساب." });
-      router.push("/login");
+      setStep("otp");
     } catch (err: any) {
-      toast({ title: "فشل إنشاء الحساب", description: err.message, variant: "destructive" });
+      toast({
+        title: "خطأ",
+        description: err.message ?? "فشل إنشاء الحساب",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  if (step === "otp") {
+    return <OtpForm email={email} onBack={() => setStep("form")} />;
+  }
+
   return (
-    <Card>
-      <CardContent className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="name" className="text-sm font-medium">الاسم</label>
-            <input
-              id="name"
+    <div className="space-y-5">
+      <GoogleButton label="التسجيل بحساب Google" />
+
+      <div className="flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted-foreground">أو بالبريد الإلكتروني</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-name">اسمك الكامل</Label>
+          <div className="relative">
+            <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="reg-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="محمد الأحمد"
               required
-              placeholder="محمد أحمد"
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="pr-10"
             />
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="email" className="text-sm font-medium">البريد الإلكتروني</label>
-            <input
-              id="email"
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-email">البريد الإلكتروني</Label>
+          <div className="relative">
+            <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="reg-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               placeholder="you@example.com"
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="password" className="text-sm font-medium">كلمة المرور</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
-              placeholder="8 أحرف على الأقل"
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="pr-10"
+              dir="ltr"
             />
           </div>
-          <Button type="submit" disabled={loading} className="w-full gap-2">
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            إنشاء الحساب مجاناً
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+
+        <Button
+          type="submit"
+          disabled={loading || !email || !name}
+          className="w-full gap-2 h-11"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
+          إنشاء الحساب مجاناً
+        </Button>
+      </form>
+
+      <p className="text-xs text-center text-muted-foreground">
+        بالتسجيل أنت توافق على{" "}
+        <a href="/terms" className="text-primary hover:underline">شروط الاستخدام</a>
+        {" "}و{" "}
+        <a href="/privacy" className="text-primary hover:underline">سياسة الخصوصية</a>
+      </p>
+    </div>
   );
 }
