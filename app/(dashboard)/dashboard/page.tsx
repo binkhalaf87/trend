@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { StatsCard } from "@/components/dashboard/stats-card";
 import { Button } from "@/components/ui/button";
 import { 
   TrendingUp, 
