@@ -1,0 +1,433 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║                                  ENUMS                                      ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+enum SubscriptionPlan {
+  STARTER    // 99 ر.س/شهر
+  GROWTH     // 249 ر.س/شهر
+  ENTERPRISE // 699 ر.س/شهر
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum TrendCategory {
+  FASHION      // موضة وملابس
+  BEAUTY       // جمال وعناية
+  ELECTRONICS  // إلكترونيات
+  HOME         // منزل وديكور
+  FOOD         // طعام ومشروبات
+  FITNESS      // لياقة ورياضة
+  KIDS         // أطفال
+  TRAVEL       // سفر وسياحة
+  GAMING       // ألعاب
+  OTHER
+}
+
+enum TrendStatus {
+  EARLY      // إشارة مبكرة — أول 48 ساعة
+  RISING     // يصعد بسرعة
+  PEAK       // في الذروة
+  DECLINING  // يتراجع
+}
+
+enum TrendSource {
+  GOOGLE_TRENDS
+  REDDIT
+  TIKTOK
+  PINTEREST
+  INSTAGRAM
+  TWITTER
+  AMAZON
+}
+
+enum GeoFocus {
+  SA   // السعودية
+  AE   // الإمارات
+  KW   // الكويت
+  QA   // قطر
+  BH   // البحرين
+  OM   // عُمان
+  EG   // مصر
+  GULF // دول الخليج
+  ARAB // الوطن العربي
+  GLOBAL
+}
+
+enum ContentPlatform {
+  INSTAGRAM
+  TIKTOK
+  SNAPCHAT
+  TWITTER
+  YOUTUBE
+  SEO
+  EMAIL
+  WHATSAPP
+}
+
+enum ContentType {
+  POST          // بوست عام
+  CAPTION       // وصف صورة/فيديو
+  VIDEO_IDEA    // فكرة فيديو بكامل السكريبت
+  HASHTAGS      // مجموعة هاشتاقات
+  SEO_KEYWORDS  // كلمات مفتاحية SEO
+  AD_COPY       // نص إعلاني
+  PRODUCT_DESC  // وصف منتج
+  EMAIL_BODY    // رسالة بريد إلكتروني
+}
+
+enum GeneratedBy {
+  OPENAI
+  CLAUDE
+}
+
+enum AlertType {
+  NEW_TREND        // ترند جديد في مجالك
+  PEAK_WARNING     // اقتراب ترند من الذروة
+  COMPETITOR_MOVE  // نشاط منافس
+  TREND_SPIKE      // ارتفاع مفاجئ
+  WEEKLY_DIGEST    // ملخص أسبوعي
+}
+
+enum AlertChannel {
+  PUSH
+  WHATSAPP
+  EMAIL
+  IN_APP
+}
+
+enum InfluencerPlatform {
+  INSTAGRAM
+  TIKTOK
+  SNAPCHAT
+  YOUTUBE
+  TWITTER
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║                                  MODELS                                     ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+// ─── 1. User ──────────────────────────────────────────────────────────────────
+model User {
+  id                  String             @id @default(cuid())
+  supabaseId          String             @unique
+  email               String             @unique
+  name                String?
+  avatarUrl           String?
+
+  // بيانات المتجر
+  storeName           String?
+  storeUrl            String?
+  storeCategory       TrendCategory?
+  storeDescription    String?
+
+  // الاشتراك (مضمّن هنا لسرعة القراءة)
+  subscriptionPlan    SubscriptionPlan?
+  subscriptionStatus  SubscriptionStatus?
+  subscriptionEndDate DateTime?
+  trialEndsAt         DateTime?
+
+  // التواصل
+  whatsappNumber      String?
+  preferredLanguage   String             @default("ar")
+  timezone            String             @default("Asia/Riyadh")
+
+  // تفضيلات الإشعارات
+  notifyByEmail       Boolean            @default(true)
+  notifyByWhatsapp    Boolean            @default(false)
+  notifyByPush        Boolean            @default(true)
+
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  // العلاقات
+  subscription        Subscription?
+  userTrends          UserTrend[]
+  alerts              Alert[]
+  alertSettings       AlertSetting[]
+
+  @@index([email])
+  @@index([subscriptionPlan, subscriptionStatus])
+  @@map("users")
+}
+
+// ─── Subscription (Stripe) ────────────────────────────────────────────────────
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  plan                 SubscriptionPlan
+  status               SubscriptionStatus @default(TRIALING)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  trialStart           DateTime?
+  trialEnd             DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ─── 2. Trend ─────────────────────────────────────────────────────────────────
+model Trend {
+  id               String        @id @default(cuid())
+
+  // النصوص
+  titleAr          String
+  titleEn          String
+  summaryAr        String?       // ملخص قصير للعرض في البطاقات
+  descriptionAr    String?       // تفصيل أطول
+
+  // التصنيف والحالة
+  category         TrendCategory
+  status           TrendStatus   @default(EARLY)
+  source           TrendSource
+  geographicFocus  GeoFocus      @default(GULF)
+
+  // المقاييس
+  signalStrength   Int           @default(0)  // 0-100
+  growthRate       Float         @default(0)  // نسبة % النمو خلال 7 أيام
+  searchVolume7d   Int           @default(0)  // حجم البحث آخر 7 أيام
+  socialMentions7d Int           @default(0)  // المذكورات على السوشيال
+  engagementScore  Float         @default(0)  // معدل التفاعل المُقدَّر
+
+  // التوقعات
+  peakExpectedAt   DateTime?     // متى يتوقع الوصول للذروة
+  peakConfidence   Float?        // درجة الثقة في التوقع (0-1)
+
+  // بيانات إضافية (JSON)
+  keywords         Json          @default("[]")       // String[]
+  relatedProducts  Json          @default("[]")       // String[]
+  sourceUrls       Json          @default("[]")       // String[]
+  priceRangeAr     String?       // مثل: "50-200 ر.س"
+
+  // صورة مرجعية
+  imageUrl         String?
+  videoUrl         String?
+
+  // توقيت
+  detectedAt       DateTime      @default(now())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // العلاقات
+  content          TrendContent[]
+  userTrends       UserTrend[]
+  alerts           Alert[]
+  influencerMatches InfluencerMatch[]
+
+  @@index([category, status])
+  @@index([signalStrength(sort: Desc)])
+  @@index([source, geographicFocus])
+  @@index([detectedAt(sort: Desc)])
+  @@map("trends")
+}
+
+// ─── 3. TrendContent (المحتوى المولّد) ───────────────────────────────────────
+model TrendContent {
+  id            String          @id @default(cuid())
+  trendId       String
+
+  platform      ContentPlatform
+  contentType   ContentType
+  generatedBy   GeneratedBy     @default(OPENAI)
+
+  // النص الفعلي
+  titleAr       String?
+  contentAr     String          @db.Text
+  hashtags      Json            @default("[]")  // String[]
+  ctaAr         String?         // Call-to-action
+
+  // جودة المحتوى
+  qualityScore  Int?            // 0-100، قد يُعطى لاحقاً
+  isApproved    Boolean         @default(false)
+
+  // prompt المستخدم (للتحسين المستقبلي)
+  promptUsed    String?         @db.Text
+
+  createdAt     DateTime        @default(now())
+
+  trend         Trend           @relation(fields: [trendId], references: [id], onDelete: Cascade)
+
+  @@index([trendId, platform])
+  @@index([contentType, generatedBy])
+  @@map("trend_content")
+}
+
+// ─── 4. UserTrend (ربط المستخدم بالترندات) ───────────────────────────────────
+model UserTrend {
+  id             String    @id @default(cuid())
+  userId         String
+  trendId        String
+
+  // حالة التفاعل
+  isSaved        Boolean   @default(false)
+  isDismissed    Boolean   @default(false)
+  isActedUpon    Boolean   @default(false)  // هل اتخذ المستخدم إجراء؟
+
+  // نقاط الصلة المحسوبة بالـ matching engine
+  relevanceScore Int       @default(0)      // 0-100
+
+  // ملاحظات المستخدم
+  notes          String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trend          Trend     @relation(fields: [trendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trendId])
+  @@index([userId, isSaved])
+  @@index([userId, relevanceScore(sort: Desc)])
+  @@map("user_trends")
+}
+
+// ─── 5. Alert (التنبيهات) ─────────────────────────────────────────────────────
+model Alert {
+  id          String        @id @default(cuid())
+  userId      String
+  trendId     String?
+
+  type        AlertType
+  messageAr   String
+  detailsAr   String?
+
+  isRead      Boolean       @default(false)
+  sentVia     AlertChannel[]
+
+  // بيانات الإرسال
+  sentAt      DateTime?
+  readAt      DateTime?
+
+  // metadata إضافية (مثل نسبة النمو أو اسم المنافس)
+  metadata    Json?
+
+  createdAt   DateTime      @default(now())
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trend       Trend?        @relation(fields: [trendId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("alerts")
+}
+
+// ─── AlertSetting (إعدادات التنبيهات لكل مستخدم) ─────────────────────────────
+model AlertSetting {
+  id               String        @id @default(cuid())
+  userId           String
+
+  alertType        AlertType
+  isEnabled        Boolean       @default(true)
+
+  // متى يُرسَل؟ (threshold على signalStrength أو growthRate)
+  minSignalStrength Int?         @default(70)
+  minGrowthRate     Float?       @default(50)
+
+  channels         AlertChannel[]
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, alertType])
+  @@map("alert_settings")
+}
+
+// ─── 6. Influencer (المؤثرون) ─────────────────────────────────────────────────
+model Influencer {
+  id              String              @id @default(cuid())
+
+  name            String
+  handle          String              // @اسم_الحساب
+  platform        InfluencerPlatform
+
+  followersCount  Int                 @default(0)
+  engagementRate  Float               @default(0)  // نسبة %
+
+  // تصنيف المحتوى
+  categories      Json                @default("[]")  // TrendCategory[]
+  bio             String?
+
+  // بيانات الأعمال
+  contactEmail    String?
+  whatsapp        String?
+  priceRange      String?             // مثل: "500-2000 ر.س للبوست"
+  currency        String              @default("SAR")
+
+  // التحقق
+  isVerified      Boolean             @default(false)
+  isActive        Boolean             @default(true)
+
+  // الموقع
+  country         String?             @default("SA")
+  city            String?
+
+  // إحصائيات موثوقة
+  avgLikes        Int?
+  avgComments     Int?
+  avgViews        Int?
+
+  // صورة الملف الشخصي
+  avatarUrl       String?
+  profileUrl      String?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  matches         InfluencerMatch[]
+
+  @@index([platform, followersCount(sort: Desc)])
+  @@index([engagementRate(sort: Desc)])
+  @@map("influencers")
+}
+
+// ─── 7. InfluencerMatch (ربط الترند بالمؤثر) ─────────────────────────────────
+model InfluencerMatch {
+  id              String      @id @default(cuid())
+  trendId         String
+  influencerId    String
+
+  matchScore      Int         @default(0)  // 0-100
+
+  // سبب التوصية
+  reasonAr        String?
+
+  // حالة التعاون
+  isContacted     Boolean     @default(false)
+  contactedAt     DateTime?
+  dealStatus      String?     // "negotiating" | "agreed" | "rejected"
+
+  recommendedAt   DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  trend           Trend       @relation(fields: [trendId], references: [id], onDelete: Cascade)
+  influencer      Influencer  @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+
+  @@unique([trendId, influencerId])
+  @@index([trendId, matchScore(sort: Desc)])
+  @@map("influencer_matches")
+}
