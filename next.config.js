@@ -6,8 +6,16 @@ const nextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
+  // Prisma يعمل فقط على server side — لا يُدرَج في client bundle
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "prisma"],
+  },
+  // إخفاء TypeScript errors لا تمنع البناء على Vercel (optional)
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
   },
 };
 

@@ -1,11 +1,11 @@
 import OpenAI from "openai";
-import type { TrendItem } from "@/types";
+import type { DbTrend } from "@/types/db";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface GenerateOptions {
   type: string;
-  trend?: TrendItem;
+  trend?: Pick<DbTrend, "titleAr" | "titleEn" | "descriptionAr" | "summaryAr">;
   platform?: string;
   tone?: string;
   customPrompt?: string;
@@ -18,11 +18,19 @@ interface GeneratedResult {
 }
 
 const TYPE_INSTRUCTIONS: Record<string, string> = {
-  SOCIAL_POST: "اكتب بوست جذاب لمنصات التواصل الاجتماعي",
+  POST:         "اكتب بوست جذاب لمنصات التواصل الاجتماعي",
+  CAPTION:      "اكتب وصفاً قصيراً وجذاباً للصورة أو الفيديو",
+  AD_COPY:      "اكتب نص إعلاني مقنع وقصير يحقق تحويلات عالية",
+  PRODUCT_DESC: "اكتب وصفاً احترافياً للمنتج يحث على الشراء",
+  EMAIL_BODY:   "اكتب رسالة بريد إلكتروني تسويقية بمقدمة وجسم وختام",
+  VIDEO_IDEA:   "اكتب فكرة فيديو كاملة مع سكريبت مختصر",
+  HASHTAGS:     "اقترح 15 هاشتاق مناسب للنشر على منصات التواصل",
+  SEO_KEYWORDS: "اقترح 10 كلمات مفتاحية SEO للمنتج المرتبط بهذا الترند",
+  // backward compat
+  SOCIAL_POST:         "اكتب بوست جذاب لمنصات التواصل الاجتماعي",
   PRODUCT_DESCRIPTION: "اكتب وصفاً احترافياً للمنتج يحث على الشراء",
-  AD_COPY: "اكتب نص إعلاني مقنع وقصير يحقق تحويلات عالية",
-  EMAIL: "اكتب رسالة بريد إلكتروني تسويقية بمقدمة وجسم وختام",
-  BLOG_EXCERPT: "اكتب مقدمة مدونة جذابة تشجع القارئ على الاستمرار",
+  EMAIL:               "اكتب رسالة بريد إلكتروني تسويقية بمقدمة وجسم وختام",
+  BLOG_EXCERPT:        "اكتب مقدمة مدونة جذابة تشجع القارئ على الاستمرار",
 };
 
 export async function generateArabicContent(options: GenerateOptions): Promise<GeneratedResult> {
@@ -34,16 +42,17 @@ export async function generateArabicContent(options: GenerateOptions): Promise<G
 
   const userPrompt = [
     TYPE_INSTRUCTIONS[type] ?? "اكتب محتوى تسويقياً",
-    trend ? `الترند: ${trend.nameAr} (${trend.nameEn})` : "",
+    trend ? `الترند: ${trend.titleAr} (${trend.titleEn})` : "",
     trend?.descriptionAr ? `وصف الترند: ${trend.descriptionAr}` : "",
+    trend?.summaryAr    ? `ملخص: ${trend.summaryAr}` : "",
     platform ? `المنصة: ${platform}` : "",
     `النبرة: ${tone}`,
     customPrompt ? `تعليمات إضافية: ${customPrompt}` : "",
     `\nأعطني JSON بهذا الشكل بالضبط:
 {
-  "title": "عنوان قصير (اختياري للبوستات)",
+  "title": "عنوان قصير (اختياري)",
   "body": "نص المحتوى الرئيسي",
-  "hashtags": ["هاشتاق1", "هاشتاق2", "هاشتاق3"]
+  "hashtags": ["#هاشتاق1", "#هاشتاق2", "#هاشتاق3"]
 }`,
   ]
     .filter(Boolean)
@@ -64,8 +73,8 @@ export async function generateArabicContent(options: GenerateOptions): Promise<G
   const parsed = JSON.parse(raw);
 
   return {
-    title: parsed.title ?? undefined,
-    body: parsed.body ?? "",
+    title:    parsed.title    ?? undefined,
+    body:     parsed.body     ?? "",
     hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
   };
 }

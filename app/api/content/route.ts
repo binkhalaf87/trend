@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { generateArabicContent } from "@/lib/openai/client";
+import { hydrateTrend } from "@/lib/utils/prisma-helpers";
 import { z } from "zod";
 
 const GenerateSchema = z.object({
   trendId: z.string().optional(),
-  type: z.enum(["SOCIAL_POST", "PRODUCT_DESCRIPTION", "AD_COPY", "EMAIL", "BLOG_EXCERPT"]),
-  platform: z.string().optional(),
+  platform: z.enum(["INSTAGRAM", "TIKTOK", "SNAPCHAT", "TWITTER", "YOUTUBE", "SEO", "EMAIL", "WHATSAPP"]).optional(),
+  contentType: z.enum(["POST", "CAPTION", "VIDEO_IDEA", "HASHTAGS", "SEO_KEYWORDS", "AD_COPY", "PRODUCT_DESC", "EMAIL_BODY"]).default("POST"),
   tone: z.string().optional(),
   customPrompt: z.string().optional(),
 });
@@ -25,28 +26,28 @@ export async function POST(req: NextRequest) {
 
     let trend = null;
     if (body.trendId) {
-      trend = await prisma.trend.findUnique({ where: { id: body.trendId } });
-      if (!trend) return NextResponse.json({ error: "Trend not found" }, { status: 404 });
+      const raw = await prisma.trend.findUnique({ where: { id: body.trendId } });
+      if (!raw) return NextResponse.json({ error: "Trend not found" }, { status: 404 });
+      trend = hydrateTrend(raw);
     }
 
     const generated = await generateArabicContent({
-      type: body.type,
+      type: body.contentType,
       trend: trend ?? undefined,
       platform: body.platform,
       tone: body.tone,
       customPrompt: body.customPrompt,
     });
 
-    const content = await prisma.generatedContent.create({
+    const content = await prisma.trendContent.create({
       data: {
-        userId: dbUser.id,
-        trendId: body.trendId ?? null,
-        type: body.type,
-        titleAr: generated.title,
-        bodyAr: generated.body,
-        hashtags: generated.hashtags,
-        platform: body.platform,
-        tone: body.tone,
+        trendId: body.trendId ?? (await getDefaultTrendId()),
+        platform: body.platform ?? "INSTAGRAM",
+        contentType: body.contentType,
+        generatedBy: "OPENAI",
+        titleAr: generated.title ?? null,
+        contentAr: generated.body,
+        hashtags: JSON.stringify(generated.hashtags),
       },
     });
 
@@ -66,26 +67,35 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } });
-    if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const params = new URL(req.url).searchParams;
+    const limit = Math.min(Number(params.get("limit") ?? "20"), 100);
+    const offset = Number(params.get("offset") ?? "0");
+    const platform = params.get("platform") ?? undefined;
 
-    const limit = Number(new URL(req.url).searchParams.get("limit") ?? "20");
-    const offset = Number(new URL(req.url).searchParams.get("offset") ?? "0");
+    const where = {
+      ...(platform && { platform: platform as any }),
+    };
 
     const [items, total] = await Promise.all([
-      prisma.generatedContent.findMany({
-        where: { userId: dbUser.id },
-        include: { trend: { select: { nameAr: true, category: true } } },
+      prisma.trendContent.findMany({
+        where,
+        include: { trend: { select: { titleAr: true, category: true, status: true } } },
         orderBy: { createdAt: "desc" },
         take: limit,
         skip: offset,
       }),
-      prisma.generatedContent.count({ where: { userId: dbUser.id } }),
+      prisma.trendContent.count({ where }),
     ]);
 
-    return NextResponse.json({ items, total });
+    return NextResponse.json({ items, total, offset, limit });
   } catch (error) {
     console.error("[GET /api/content]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
+}
+
+async function getDefaultTrendId(): Promise<string> {
+  const trend = await prisma.trend.findFirst({ orderBy: { signalStrength: "desc" } });
+  if (!trend) throw new Error("No trends in database");
+  return trend.id;
 }

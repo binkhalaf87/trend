@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const [trends, total] = await Promise.all([
       prisma.trend.findMany({
         where,
-        orderBy: { score: "desc" },
+        orderBy: { signalStrength: "desc" },
         take: query.limit,
         skip: query.offset,
       }),

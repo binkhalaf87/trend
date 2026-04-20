@@ -237,6 +237,7 @@ model Trend {
   alerts           Alert[]
   influencerMatches InfluencerMatch[]
 
+  @@unique([titleEn])
   @@index([category, status])
   @@index([signalStrength(sort: Desc)])
   @@index([source, geographicFocus])
@@ -400,6 +401,7 @@ model Influencer {
 
   matches         InfluencerMatch[]
 
+  @@unique([handle, platform])
   @@index([platform, followersCount(sort: Desc)])
   @@index([engagementRate(sort: Desc)])
   @@map("influencers")
