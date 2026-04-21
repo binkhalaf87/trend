@@ -1,27 +1,204 @@
 import { Metadata } from "next";
-import { TrendCard } from "@/components/trends/trend-card";
-import { TrendFilter } from "@/components/trends/trend-filter";
-import { MOCK_TRENDS } from "@/lib/utils/mock-data";
+import { Flame, Sparkles, TrendingUp } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hydrateTrend } from "@/lib/utils/prisma-helpers";
+import {
+  TREND_CATEGORY_FILTERS,
+  categoryLabel,
+  normalizeTrendSort,
+} from "@/lib/trends/helpers";
+import { TrendGridCard } from "@/components/trends/trend-grid-card";
+import { TrendEmptyState } from "@/components/trends/trend-empty-state";
+import { TrendsToolbar } from "@/components/trends/trends-toolbar";
+import { Badge } from "@/components/ui/badge";
+import type { TrendSource } from "@/types/db";
 
-export const metadata: Metadata = { title: "الترندات" };
+export const metadata: Metadata = {
+  title: "الترندات",
+};
 
-export default function TrendsPage() {
+type TrendsPageProps = {
+  searchParams?: {
+    category?: string;
+    sort?: string;
+    q?: string;
+  };
+};
+
+export default async function TrendsPage({ searchParams }: TrendsPageProps) {
+  const category = normalizeCategory(searchParams?.category);
+  const sort = normalizeTrendSort(searchParams?.sort);
+  const query = searchParams?.q?.trim() ?? "";
+  const data = await getTrendsPageData({ category, sort, query });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">الترندات</h1>
-        <p className="text-muted-foreground mt-1">
-          استكشف الترندات الصاعدة في السوق العربي — محدّثة كل ساعة.
-        </p>
-      </div>
+      <section className="overflow-hidden rounded-[32px] border border-white/45 bg-gradient-to-br from-white via-[#f7f6ff] to-[#efedff] px-5 py-6 shadow-[0_20px_55px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-gradient-to-br dark:from-[#151226] dark:via-[#18142a] dark:to-[#211a39] md:px-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#534AB7]/10 px-3 py-1 text-xs font-semibold text-[#534AB7] dark:bg-[#534AB7]/20 dark:text-[#c9c4ff]">
+              <Sparkles className="h-3.5 w-3.5" />
+              مراقبة الترندات لمتجرك
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-extrabold tracking-tight">الترندات الساخنة</h1>
+              <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                فلتر، رتّب، وابحث عن الفرص الأقرب لمنتجاتك. كل بطاقة هنا تعطيك
+                صورة سريعة عن القوة، السرعة، والوقت الأنسب للدخول.
+              </p>
+            </div>
+          </div>
 
-      <TrendFilter />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[24px] border border-white/50 bg-white/70 px-4 py-4 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <TrendingUp className="h-3.5 w-3.5" />
+                الترندات الظاهرة
+              </div>
+              <p className="mt-2 text-2xl font-extrabold">{data.trends.length}</p>
+            </div>
+            <div className="rounded-[24px] border border-white/50 bg-white/70 px-4 py-4 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Flame className="h-3.5 w-3.5" />
+                أعلى فئة
+              </div>
+              <p className="mt-2 text-base font-extrabold">{data.topCategoryLabel}</p>
+            </div>
+            <div className="rounded-[24px] border border-white/50 bg-white/70 px-4 py-4 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Sparkles className="h-3.5 w-3.5" />
+                الفلتر الحالي
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <Badge className="border-none bg-[#534AB7]/10 text-[#534AB7] dark:bg-[#534AB7]/20 dark:text-[#c9c4ff]">
+                  {category === "ALL" ? "كل الفئات" : categoryLabel(category)}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {MOCK_TRENDS.map((trend) => (
-          <TrendCard key={trend.id} trend={trend} showActions />
-        ))}
-      </div>
+      <TrendsToolbar category={category} sort={sort} query={query} />
+
+      {data.trends.length === 0 ? (
+        <TrendEmptyState />
+      ) : (
+        <section className="grid gap-5 md:grid-cols-2">
+          {data.trends.map((trend) => (
+            <TrendGridCard
+              key={trend.id}
+              trend={{
+                id: trend.id,
+                titleAr: trend.titleAr,
+                titleEn: trend.titleEn,
+                summaryAr: trend.summaryAr,
+                category: trend.category,
+                status: trend.status,
+                signalStrength: trend.signalStrength,
+                growthRate: trend.growthRate,
+                peakExpectedAt: trend.peakExpectedAt,
+                sources: [trend.source, ...trend.extraSources].slice(0, 3),
+              }}
+            />
+          ))}
+        </section>
+      )}
     </div>
   );
+}
+
+async function getTrendsPageData({
+  category,
+  sort,
+  query,
+}: {
+  category: string;
+  sort: string;
+  query: string;
+}) {
+  const supabase = createSupabaseServerClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+
+  const dbUser = authUser
+    ? await prisma.user.findUnique({
+        where: { supabaseId: authUser.id },
+        select: { id: true, storeCategory: true },
+      })
+    : null;
+
+  const clauses: Array<Record<string, unknown>> = [];
+
+  if (category !== "ALL") {
+    clauses.push({ category: category as any });
+  }
+
+  if (query) {
+    clauses.push({
+      OR: [
+        { titleAr: { contains: query, mode: "insensitive" as const } },
+        { titleEn: { contains: query, mode: "insensitive" as const } },
+        { summaryAr: { contains: query, mode: "insensitive" as const } },
+      ],
+    });
+  }
+
+  if (category === "ALL" && dbUser?.storeCategory) {
+    clauses.push({
+      OR: [
+        { category: dbUser.storeCategory },
+        { signalStrength: { gte: 78 } },
+      ],
+    });
+  }
+
+  const where = clauses.length > 0 ? { AND: clauses } : {};
+
+  const rows = await prisma.trend.findMany({
+    where,
+    orderBy:
+      sort === "newest"
+        ? [{ detectedAt: "desc" }]
+        : sort === "peak"
+          ? [{ peakExpectedAt: "asc" }, { signalStrength: "desc" }]
+          : [{ signalStrength: "desc" }, { growthRate: "desc" }],
+    take: 24,
+  });
+
+  const trends = rows.map((row) => {
+    const trend = hydrateTrend(row as never);
+    return {
+      ...trend,
+      extraSources: inferExtraSources(trend.sourceUrls),
+    };
+  });
+
+  const topCategory = trends[0]?.category ?? dbUser?.storeCategory ?? "OTHER";
+
+  return {
+    trends,
+    topCategoryLabel: categoryLabel(topCategory),
+  };
+}
+
+function normalizeCategory(value?: string) {
+  if (!value) return "ALL";
+  const allowed = new Set(TREND_CATEGORY_FILTERS.map((item) => item.value));
+  return allowed.has(value as never) ? value : "ALL";
+}
+
+function inferExtraSources(urls: string[]) {
+  return urls
+    .map((url) => {
+      const normalized = url.toLowerCase();
+      if (normalized.includes("google")) return "GOOGLE_TRENDS";
+      if (normalized.includes("reddit")) return "REDDIT";
+      if (normalized.includes("tiktok")) return "TIKTOK";
+      if (normalized.includes("instagram")) return "INSTAGRAM";
+      if (normalized.includes("amazon")) return "AMAZON";
+      if (normalized.includes("pinterest")) return "PINTEREST";
+      return null;
+    })
+    .filter((value): value is TrendSource => Boolean(value));
 }
