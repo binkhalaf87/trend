@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { AnomalyResult } from "./types";
+import { mapDbTrendToAiTrend, mapUserStoreToAiStore, personalizeForStore } from "@/lib/ai";
+import { hydrateTrend } from "@/lib/utils/prisma-helpers";
 
 // ─── Main: create alerts for all users who should be notified ─────────────────
 
@@ -34,7 +36,10 @@ export async function sendTrendAlerts(): Promise<{
     },
     select: {
       id: true,
+      storeName: true,
+      storeDescription: true,
       storeCategory: true,
+      preferredLanguage: true,
       notifyByEmail: true,
       notifyByPush: true,
       notifyByWhatsapp: true,
@@ -45,10 +50,15 @@ export async function sendTrendAlerts(): Promise<{
   });
 
   for (const user of users) {
-    // Which trends are relevant to this user's store category?
+    const aiStore = mapUserStoreToAiStore(user);
+    const rankedTrends = await personalizeForStore(
+      recentTrends.map((trend) => mapDbTrendToAiTrend(hydrateTrend(trend as never))),
+      aiStore
+    );
+    const rankedMap = new Map(rankedTrends.map((trend) => [trend.id, trend]));
     const relevantTrends = recentTrends.filter((trend) => {
-      if (!user.storeCategory) return true; // no category set = show all
-      return trend.category === user.storeCategory || trend.signalStrength >= 85;
+      const ranked = rankedMap.get(trend.id);
+      return ranked?.shouldRecommend || trend.signalStrength >= 85;
     });
 
     for (const trend of relevantTrends) {
@@ -84,13 +94,14 @@ export async function sendTrendAlerts(): Promise<{
             trendId: trend.id,
             type: alertType,
             messageAr: buildMessage(trend.titleAr, trend.signalStrength, alertType),
-            detailsAr: buildDetails(trend),
+            detailsAr: buildDetails(trend, rankedMap.get(trend.id)?.fitReasonAr),
             sentVia: channels,
             sentAt: new Date(),
             metadata: {
               signalStrength: trend.signalStrength,
               growthRate: trend.growthRate,
               category: trend.category,
+              personalizationScore: rankedMap.get(trend.id)?.relevanceScore ?? null,
             },
           },
         });
@@ -229,11 +240,12 @@ function buildDetails(trend: {
   growthRate: number;
   category: string;
   source: string;
-}): string {
+}, fitReason?: string): string {
   return [
     `معدل النمو: ${Math.round(trend.growthRate)}%`,
     `الفئة: ${CATEGORY_AR[trend.category] ?? trend.category}`,
     `المصدر: ${SOURCE_AR[trend.source] ?? trend.source}`,
+    ...(fitReason ? [`سبب الملاءمة: ${fitReason}`] : []),
   ].join(" • ");
 }
 

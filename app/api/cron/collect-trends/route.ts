@@ -6,6 +6,7 @@ import { processTrends } from "@/lib/collectors/trend-processor";
 import { logCollectorRun, verifyCronSecret } from "@/lib/collectors/utils";
 import { notifyAdminOnFailure } from "@/lib/collectors/alert-sender";
 import type { RawTrendData } from "@/lib/collectors/types";
+import { classifyTrend } from "@/lib/ai";
 
 export const maxDuration = 300; // 5 min — Vercel Pro max for cron routes
 
@@ -84,8 +85,11 @@ export async function GET(req: NextRequest) {
     // Pinterest failures are non-critical (token may not be configured)
   }
 
-  // ── 4. Persist ────────────────────────────────────────────────────────────
-  const { created, updated, errors: saveErrors } = await processTrends(allRaw);
+  // ── 4. AI classification enrichment ───────────────────────────────────────
+  const enrichedRaw = await enrichRawTrends(allRaw, errors);
+
+  // ── 5. Persist ────────────────────────────────────────────────────────────
+  const { created, updated, errors: saveErrors } = await processTrends(enrichedRaw);
   errors.push(...saveErrors);
 
   const completedAt = new Date();
@@ -102,17 +106,17 @@ export async function GET(req: NextRequest) {
     itemsSaved: created + updated,
     errorMsg: errors.length ? errors.join("\n") : undefined,
     metadata: {
-      bySource: countBySource(allRaw),
+      bySource: countBySource(enrichedRaw),
       created,
       updated,
     },
   });
 
-  console.log(`[cron/collect-trends] found=${allRaw.length} created=${created} updated=${updated} errors=${errors.length}`);
+  console.log(`[cron/collect-trends] found=${enrichedRaw.length} created=${created} updated=${updated} errors=${errors.length}`);
 
   return NextResponse.json({
     ok: true,
-    found: allRaw.length,
+    found: enrichedRaw.length,
     created,
     updated,
     errors: errors.length,
@@ -125,4 +129,48 @@ function countBySource(items: RawTrendData[]): Record<string, number> {
     acc[item.source] = (acc[item.source] ?? 0) + 1;
     return acc;
   }, {});
+}
+
+async function enrichRawTrends(items: RawTrendData[], errors: string[]) {
+  const enriched = await Promise.allSettled(
+    items.map(async (item) => {
+      const classified = await classifyTrend({
+        titleEn: item.titleEn,
+        titleAr: item.titleAr,
+        descriptionAr: item.descriptionAr,
+        summaryAr: item.summaryAr,
+        keywords: item.keywords,
+        source: item.source,
+        region: item.region,
+        categoryHint: item.category,
+        searchVolume: item.searchVolume,
+        growthRate: item.growthRate,
+        socialMentions: item.socialMentions,
+        signalStrength: item.rawScore,
+        sourceUrls: item.sourceUrls,
+        relatedProducts: item.relatedProducts,
+        metadata: item.metadata,
+      });
+
+      return {
+        ...item,
+        category: classified.category,
+        summaryAr: classified.summaryAr,
+        descriptionAr: `${classified.reasoningAr}\n\n${classified.commercialAngleAr}`,
+        relatedProducts: classified.relatedProducts.length
+          ? classified.relatedProducts
+          : item.relatedProducts,
+      } satisfies RawTrendData;
+    })
+  );
+
+  return enriched.map((result, index) => {
+    if (result.status === "fulfilled") {
+      return result.value;
+    }
+
+    const item = items[index];
+    errors.push(`AI classify ${item.titleEn}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`);
+    return item;
+  });
 }

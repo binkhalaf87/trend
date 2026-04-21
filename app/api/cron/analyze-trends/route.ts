@@ -7,6 +7,7 @@ import {
 import { logCollectorRun, verifyCronSecret } from "@/lib/collectors/utils";
 import { notifyAdminOnFailure } from "@/lib/collectors/alert-sender";
 import { prisma } from "@/lib/prisma";
+import { forecastTrend } from "@/lib/ai";
 
 export const maxDuration = 300;
 
@@ -34,7 +35,10 @@ export async function GET(req: NextRequest) {
     const { updated, errors: applyErrors } = await applyAnomalyResults(anomalies);
     errors.push(...applyErrors);
 
-    // ── 4. Mark old PEAK trends as DECLINING ──────────────────────────────
+    // ── 4. Forecast peak timing and market window ─────────────────────────
+    const forecasted = await applyForecasts(historyMap);
+
+    // ── 5. Mark old PEAK trends as DECLINING ──────────────────────────────
     const decliningCount = await markDecliningTrends();
 
     const completedAt = new Date();
@@ -51,6 +55,7 @@ export async function GET(req: NextRequest) {
         totalAnalyzed: historyMap.size,
         anomaliesDetected: trueAnomalies.length,
         trendsUpdated: updated,
+        trendsForecasted: forecasted,
         trendsDeclined: decliningCount,
         topAnomalies: trueAnomalies.slice(0, 5).map((a) => ({
           title: a.titleEn,
@@ -70,6 +75,7 @@ export async function GET(req: NextRequest) {
       analyzed: historyMap.size,
       anomaliesDetected: trueAnomalies.length,
       trendsUpdated: updated,
+      trendsForecasted: forecasted,
       trendsDeclined: decliningCount,
       durationMs: completedAt.getTime() - startedAt.getTime(),
     });
@@ -105,4 +111,42 @@ async function markDecliningTrends(): Promise<number> {
   });
 
   return result.count;
+}
+
+async function applyForecasts(
+  historyMap: Awaited<ReturnType<typeof loadTrendHistory>>
+): Promise<number> {
+  let updated = 0;
+
+  const results = await Promise.allSettled(
+    [...historyMap.entries()].map(async ([trendId, value]) => {
+      const forecast = await forecastTrend(value.points);
+      const now = new Date();
+      const peakExpectedAt = forecast.peakDate
+        ? new Date(forecast.peakDate)
+        : new Date(now.getTime() + forecast.peakInDays * 24 * 60 * 60 * 1000);
+
+      const nextStatus =
+        forecast.peakInDays <= 1 ? "PEAK" : forecast.peakInDays <= 5 ? "RISING" : undefined;
+
+      await prisma.trend.update({
+        where: { id: trendId },
+        data: {
+          peakExpectedAt,
+          peakConfidence: forecast.confidence,
+          engagementScore: forecast.marketSizeScore,
+          descriptionAr: forecast.reasoningAr,
+          ...(nextStatus ? { status: nextStatus as "PEAK" | "RISING" } : {}),
+        },
+      });
+    })
+  );
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      updated++;
+    }
+  }
+
+  return updated;
 }

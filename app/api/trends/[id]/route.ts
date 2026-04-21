@@ -13,7 +13,14 @@ export async function GET(
 
     const trend = await prisma.trend.findUnique({
       where: { id: params.id },
-      include: { content: { take: 5, orderBy: { createdAt: "desc" } } },
+      include: {
+        content: { take: 5, orderBy: { createdAt: "desc" } },
+        influencerMatches: {
+          include: { influencer: true },
+          orderBy: { matchScore: "desc" },
+          take: 3,
+        },
+      },
     });
 
     if (!trend) return NextResponse.json({ error: "Not found" }, { status: 404 });

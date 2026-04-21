@@ -8,6 +8,8 @@ export type CollectorRunStatus = "RUNNING" | "SUCCESS" | "FAILED" | "PARTIAL";
 export interface RawTrendData {
   titleEn: string;
   titleAr: string;
+  summaryAr?: string;
+  descriptionAr?: string;
   keywords: string[];
   searchVolume?: number;
   growthRate?: number;
@@ -19,6 +21,14 @@ export interface RawTrendData {
   relatedProducts?: string[];
   rawScore?: number;
   imageUrl?: string;
+  engagementScore?: number;
+  peakExpectedAt?: Date;
+  peakConfidence?: number;
+  aiIntent?: "COMMERCIAL" | "NEWS" | "ENTERTAINMENT";
+  aiRelevanceScores?: Record<string, number>;
+  trendDuration?: "SHORT" | "MEDIUM" | "LONG";
+  marketSizeBand?: "NICHE" | "GROWING" | "MASS";
+  marketSizeScore?: number;
   metadata?: Record<string, unknown>;
 }
 

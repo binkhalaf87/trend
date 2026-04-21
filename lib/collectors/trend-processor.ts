@@ -24,6 +24,10 @@ export async function processTrends(raw: RawTrendData[]): Promise<{
         await prisma.trend.update({
           where: { id: existing.id },
           data: {
+            titleAr: item.titleAr || existing.titleAr,
+            summaryAr: item.summaryAr ?? existing.summaryAr,
+            descriptionAr: item.descriptionAr ?? existing.descriptionAr,
+            category: validateEnum(item.category, VALID_CATEGORIES, existing.category as (typeof VALID_CATEGORIES)[number]) as any,
             growthRate: Math.max(existing.growthRate, item.growthRate ?? 0),
             searchVolume7d: Math.max(
               existing.searchVolume7d,
@@ -31,6 +35,9 @@ export async function processTrends(raw: RawTrendData[]): Promise<{
             ),
             socialMentions7d: (existing.socialMentions7d ?? 0) + (item.socialMentions ?? 0),
             signalStrength: Math.max(existing.signalStrength, newSignal),
+            engagementScore: Math.max(existing.engagementScore ?? 0, item.engagementScore ?? 0, item.marketSizeScore ?? 0),
+            peakExpectedAt: item.peakExpectedAt ?? existing.peakExpectedAt,
+            peakConfidence: item.peakConfidence ?? existing.peakConfidence,
             keywords: mergeKeywords(
               existing.keywords as string[],
               item.keywords
@@ -38,6 +45,10 @@ export async function processTrends(raw: RawTrendData[]): Promise<{
             sourceUrls: mergeKeywords(
               existing.sourceUrls as string[],
               item.sourceUrls ?? []
+            ),
+            relatedProducts: mergeKeywords(
+              existing.relatedProducts as string[],
+              item.relatedProducts ?? []
             ),
             updatedAt: new Date(),
           },
@@ -56,6 +67,8 @@ export async function processTrends(raw: RawTrendData[]): Promise<{
           data: {
             titleEn: item.titleEn,
             titleAr: item.titleAr,
+            summaryAr: item.summaryAr,
+            descriptionAr: item.descriptionAr,
             category: validateEnum(item.category, VALID_CATEGORIES, "OTHER") as any,
             status: "EARLY",
             source: item.source as any,
@@ -64,6 +77,9 @@ export async function processTrends(raw: RawTrendData[]): Promise<{
             growthRate: item.growthRate ?? 0,
             searchVolume7d: item.searchVolume ?? 0,
             socialMentions7d: item.socialMentions ?? 0,
+            engagementScore: item.engagementScore ?? item.marketSizeScore ?? 0,
+            peakExpectedAt: item.peakExpectedAt,
+            peakConfidence: item.peakConfidence,
             keywords: item.keywords ?? [],
             sourceUrls: item.sourceUrls ?? [],
             relatedProducts: item.relatedProducts ?? [],
