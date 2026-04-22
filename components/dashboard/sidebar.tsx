@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronLeft,
   MessageSquareShare,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,11 +20,12 @@ import { useUser } from "@/hooks/use-user";
 import { Badge } from "@/components/ui/badge";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
-  { href: "/trends",    label: "الترندات",    icon: TrendingUp },
-  { href: "/content",   label: "المحتوى",     icon: FileText },
-  { href: "/alerts",    label: "التنبيهات",   icon: Bell },
-  { href: "/settings",  label: "الإعدادات",   icon: Settings },
+  { href: "/dashboard",    label: "لوحة التحكم", icon: LayoutDashboard },
+  { href: "/trends",       label: "الترندات",    icon: TrendingUp },
+  { href: "/content",      label: "المحتوى",     icon: FileText },
+  { href: "/alerts",       label: "التنبيهات",   icon: Bell },
+  { href: "/influencers",  label: "المؤثرون",    icon: Users },
+  { href: "/settings",     label: "الإعدادات",   icon: Settings },
 ];
 
 export function Sidebar() {

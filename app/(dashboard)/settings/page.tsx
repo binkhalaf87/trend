@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { ProfileSettings } from "@/components/settings/profile-settings";
 import { BillingSettings } from "@/components/settings/billing-settings";
 import { NotificationSettings } from "@/components/settings/notification-settings";
+import { ApiSettings } from "@/components/settings/api-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const metadata: Metadata = { title: "الإعدادات" };
@@ -17,10 +18,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="profile">الملف الشخصي</TabsTrigger>
           <TabsTrigger value="billing">الاشتراك والفواتير</TabsTrigger>
           <TabsTrigger value="notifications">الإشعارات</TabsTrigger>
+          <TabsTrigger value="api">API والـ Webhook</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="mt-4 max-w-2xl">
           <ProfileSettings />
@@ -30,6 +32,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="notifications" className="mt-4 max-w-2xl">
           <NotificationSettings />
+        </TabsContent>
+        <TabsContent value="api" className="mt-4">
+          <ApiSettings />
         </TabsContent>
       </Tabs>
     </div>

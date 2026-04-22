@@ -94,3 +94,28 @@ export interface PaginatedResponse<T> {
 export interface ApiError {
   error: string | Array<{ message: string; path: (string | number)[] }>;
 }
+
+export interface InfluencerItem {
+  id: string;
+  name: string;
+  handle: string;
+  platform: "INSTAGRAM" | "TIKTOK" | "SNAPCHAT" | "YOUTUBE" | "TWITTER";
+  followersCount: number;
+  engagementRate: number;
+  categories: TrendCategory[];
+  bio?: string | null;
+  contactEmail?: string | null;
+  priceRange?: string | null;
+  currency: string;
+  isVerified: boolean;
+  isActive: boolean;
+  country?: string | null;
+  city?: string | null;
+  avgLikes?: number | null;
+  avgComments?: number | null;
+  avatarUrl?: string | null;
+  profileUrl?: string | null;
+  matchedTrendIds: string[];
+  matchScore: number;
+  matchReasonAr: string;
+}
