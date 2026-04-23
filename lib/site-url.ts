@@ -16,7 +16,7 @@ export function getConfiguredAppOrigin() {
 
 export function buildAppUrl(pathname: string, origin?: string | null) {
   const baseOrigin =
-    normalizeOrigin(origin) ?? getConfiguredAppOrigin() ?? LOCAL_APP_URL;
+    getConfiguredAppOrigin() ?? normalizeOrigin(origin) ?? LOCAL_APP_URL;
 
   return new URL(pathname, baseOrigin).toString();
 }
