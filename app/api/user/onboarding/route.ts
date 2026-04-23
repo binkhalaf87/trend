@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { ensureUserInDb } from "@/lib/auth/helpers";
 import { z } from "zod";
 
 const OnboardingSchema = z.object({
@@ -18,8 +19,17 @@ export async function POST(req: NextRequest) {
     const supabase = createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user.email) {
+      return NextResponse.json({ error: "Missing authenticated email" }, { status: 400 });
+    }
 
     const body = OnboardingSchema.parse(await req.json());
+
+    await ensureUserInDb(
+      user.id,
+      user.email,
+      user.user_metadata?.name ?? user.user_metadata?.full_name
+    );
 
     // احفظ في DB
     const updated = await prisma.user.update({

@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isOnboardingComplete } from "@/lib/auth/helpers";
+import { ensureUserInDb, isOnboardingComplete } from "@/lib/auth/helpers";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -12,6 +12,13 @@ export default async function OnboardingPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
   if (!authUser) redirect("/login");
+  if (!authUser.email) redirect("/login?error=missing_email");
+
+  await ensureUserInDb(
+    authUser.id,
+    authUser.email,
+    authUser.user_metadata?.name ?? authUser.user_metadata?.full_name
+  );
 
   const complete = await isOnboardingComplete(authUser!.id);
   if (complete) redirect("/dashboard");
