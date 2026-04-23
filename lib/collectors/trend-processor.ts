@@ -214,12 +214,12 @@ function calcSignalStrength(item: RawTrendData): number {
 
 function mergeKeywords(existing: string[] | unknown, incoming: string[]): string[] {
   const arr = Array.isArray(existing) ? existing : [];
-  return [...new Set([...arr, ...incoming])].slice(0, 20);
+  return Array.from(new Set([...arr, ...incoming])).slice(0, 20);
 }
 
 function validateEnum<T extends string>(
   value: string,
-  valid: T[],
+  valid: readonly T[],
   fallback: T
 ): T {
   return valid.includes(value as T) ? (value as T) : fallback;

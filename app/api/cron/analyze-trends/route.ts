@@ -119,7 +119,7 @@ async function applyForecasts(
   let updated = 0;
 
   const results = await Promise.allSettled(
-    [...historyMap.entries()].map(async ([trendId, value]) => {
+    Array.from(historyMap.entries()).map(async ([trendId, value]) => {
       const forecast = await forecastTrend(value.points);
       const now = new Date();
       const peakExpectedAt = forecast.peakDate

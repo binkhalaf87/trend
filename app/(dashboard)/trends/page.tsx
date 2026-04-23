@@ -99,7 +99,9 @@ export default async function TrendsPage({ searchParams }: TrendsPageProps) {
                 signalStrength: trend.signalStrength,
                 growthRate: trend.growthRate,
                 peakExpectedAt: trend.peakExpectedAt,
-                sources: [trend.source, ...trend.extraSources].slice(0, 3),
+                sources: [trend.source, ...trend.extraSources]
+                  .filter((source): source is TrendSource => source !== null)
+                  .slice(0, 3),
               }}
             />
           ))}
@@ -167,7 +169,7 @@ async function getTrendsPageData({
   });
 
   const trends = rows.map((row) => {
-    const trend = hydrateTrend(row as never);
+    const trend = hydrateTrend(row);
     return {
       ...trend,
       extraSources: inferExtraSources(trend.sourceUrls),
@@ -188,17 +190,25 @@ function normalizeCategory(value?: string) {
   return allowed.has(value as never) ? value : "ALL";
 }
 
-function inferExtraSources(urls: string[]) {
-  return urls
-    .map((url) => {
-      const normalized = url.toLowerCase();
-      if (normalized.includes("google")) return "GOOGLE_TRENDS";
-      if (normalized.includes("reddit")) return "REDDIT";
-      if (normalized.includes("tiktok")) return "TIKTOK";
-      if (normalized.includes("instagram")) return "INSTAGRAM";
-      if (normalized.includes("amazon")) return "AMAZON";
-      if (normalized.includes("pinterest")) return "PINTEREST";
-      return null;
-    })
-    .filter((value): value is TrendSource => Boolean(value));
+function inferExtraSources(urls: string[]): TrendSource[] {
+  const sources: TrendSource[] = [];
+
+  for (const url of urls) {
+    const normalized = url.toLowerCase();
+    let source: TrendSource | null = null;
+
+    if (normalized.includes("google")) source = "GOOGLE_TRENDS";
+    else if (normalized.includes("reddit")) source = "REDDIT";
+    else if (normalized.includes("tiktok")) source = "TIKTOK";
+    else if (normalized.includes("instagram")) source = "INSTAGRAM";
+    else if (normalized.includes("amazon")) source = "AMAZON";
+    else if (normalized.includes("pinterest")) source = "PINTEREST";
+    else if (normalized.includes("twitter") || normalized.includes("x.com")) source = "TWITTER";
+
+    if (source) {
+      sources.push(source);
+    }
+  }
+
+  return Array.from(new Set(sources));
 }

@@ -18,6 +18,7 @@ import {
   TriangleAlert,
   UserRound,
 } from "lucide-react";
+import type { Prisma, TrendStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { MOCK_TRENDS } from "@/lib/utils/mock-data";
@@ -36,6 +37,8 @@ import {
 export const metadata: Metadata = {
   title: "لوحة التحكم",
 };
+
+const ACTIVE_TREND_STATUSES: TrendStatus[] = ["EARLY", "RISING", "PEAK"];
 
 type DashboardData = {
   user: {
@@ -432,8 +435,8 @@ async function getDashboardData(): Promise<DashboardData> {
     startOfToday.setHours(0, 0, 0, 0);
 
     const sevenDaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000));
-    const trendWhere = {
-      status: { in: ["EARLY", "RISING", "PEAK"] as const },
+    const trendWhere: Prisma.TrendWhereInput = {
+      status: { in: ACTIVE_TREND_STATUSES },
       ...(dbUser.storeCategory
         ? {
             OR: [
@@ -565,7 +568,7 @@ async function getDashboardData(): Promise<DashboardData> {
         },
       ],
       hotTrends: hotTrendRows.map((row) => {
-        const trend = hydrateTrend(row as never);
+    const trend = hydrateTrend(row);
         return {
           id: trend.id,
           title: trend.titleAr,

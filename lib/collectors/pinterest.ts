@@ -128,7 +128,7 @@ function extractRelatedKeywords(keyword: string): string[] {
     variants.push(words[0]);               // first word alone
   }
 
-  return [...new Set(variants)].slice(0, 4);
+  return Array.from(new Set(variants)).slice(0, 4);
 }
 
 function deduplicateByTitle(items: RawTrendData[]): RawTrendData[] {

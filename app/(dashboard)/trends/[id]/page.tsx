@@ -407,12 +407,12 @@ async function getTrendDetail(id: string) {
 
   if (!trend) return null;
 
-  const hydratedTrend = hydrateTrend(trend as never);
+  const hydratedTrend = hydrateTrend(trend);
   const history = buildTrendHistory(hydratedTrend);
-  const content = trend.content.map((item) => hydrateTrendContent(item as never));
+  const content = trend.content.map((item) => hydrateTrendContent(item));
   const influencerMatches = trend.influencerMatches.map((match) => ({
     ...match,
-    influencer: hydrateInfluencer(match.influencer as never),
+    influencer: hydrateInfluencer(match.influencer),
   }));
 
   const forecast = history.filter((point) => point.forecast);

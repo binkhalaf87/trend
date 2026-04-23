@@ -319,7 +319,7 @@ export async function saveInfluencerMatches(trendId: string, matches: Influencer
 }
 
 export function mapDbTrendToAiTrend(trend: DbTrend): Trend {
-  const hydrated = hydrateTrend(trend as never);
+  const hydrated = hydrateTrend(trend);
   return normalizeTrend({
     id: hydrated.id,
     titleEn: hydrated.titleEn,
@@ -412,10 +412,13 @@ async function callAnthropicJson<T extends z.ZodTypeAny>({
     messages: [{ role: "user", content: user }],
   });
 
-  const text = response.content
-    .filter((block): block is { type: "text"; text: string } => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
+  const text = response.content.reduce((parts, block) => {
+    if (block.type === "text") {
+      parts.push(block.text);
+    }
+
+    return parts;
+  }, [] as string[]).join("\n");
 
   if (!text) {
     throw new Error("Anthropic returned an empty response");
@@ -900,7 +903,13 @@ function intentLabelAr(intent: TrendIntent) {
 }
 
 function uniqueStrings(values?: Array<string | null | undefined>) {
-  return [...new Set((values ?? []).filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim()))];
+  return Array.from(
+    new Set(
+      (values ?? [])
+        .filter((value): value is string => Boolean(value?.trim()))
+        .map((value) => value.trim())
+    )
+  );
 }
 
 function extractJsonObject(content: string) {
@@ -932,5 +941,5 @@ function average(values: number[]) {
 }
 
 function sanitizeHashtag(value: string) {
-  return value.replace(/[^\p{L}\p{N}_]+/gu, "");
+  return value.replace(/[^\w\u0600-\u06FF]+/g, "");
 }

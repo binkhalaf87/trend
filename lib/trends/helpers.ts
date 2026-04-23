@@ -254,7 +254,9 @@ export function formatFollowers(value: number) {
   return `${value}`;
 }
 
-export function buildContentPreview(content: Array<{ platform: string; contentType: string; titleAr: string | null; contentAr: string }>) {
+export function buildContentPreview<
+  T extends { platform: string; contentType: string; titleAr: string | null; contentAr: string }
+>(content: T[]) {
   return content.map((item) => ({
     ...item,
     preview: item.contentAr.length > 140 ? `${item.contentAr.slice(0, 140)}...` : item.contentAr,
@@ -273,8 +275,8 @@ export function buildSourceLinks(trend: Pick<DbTrend, "source" | "sourceUrls">) 
   }));
 }
 
-export function findTopInfluencer(
-  influencers: Array<{ influencer: DbInfluencer; matchScore: number }>
+export function findTopInfluencer<T extends { influencer: DbInfluencer; matchScore: number }>(
+  influencers: T[]
 ) {
   return [...influencers].sort((a, b) => b.matchScore - a.matchScore)[0] ?? null;
 }

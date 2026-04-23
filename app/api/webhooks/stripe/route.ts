@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
+import { getStripeClient } from "@/lib/stripe/client";
 import type { SubscriptionPlan, SubscriptionStatus } from "@/types/db";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
 
 // Map Stripe price IDs → SubscriptionPlan
 function priceToplan(priceId: string): SubscriptionPlan {
@@ -34,19 +31,26 @@ function stripeStatusToDb(status: string): SubscriptionStatus {
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!signature) {
     return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
   }
+  if (!webhookSecret) {
+    return NextResponse.json({ error: "STRIPE_WEBHOOK_SECRET is not set" }, { status: 500 });
+  }
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+    const stripe = getStripeClient();
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch {
     return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
   }
 
   try {
+    const stripe = getStripeClient();
+
     switch (event.type) {
       // ── مستخدم جديد أتمّ checkout
       case "checkout.session.completed": {

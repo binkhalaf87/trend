@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { RetryOptions } from "./types";
 
@@ -38,16 +39,9 @@ export function sleep(ms: number): Promise<void> {
 
 // ─── DB logger ────────────────────────────────────────────────────────────────
 
-export async function logCollectorRun(data: {
-  source: string;
-  status: string;
-  startedAt: Date;
-  completedAt?: Date;
-  itemsFound?: number;
-  itemsSaved?: number;
-  errorMsg?: string;
-  metadata?: Record<string, unknown>;
-}): Promise<void> {
+export async function logCollectorRun(
+  data: Prisma.CollectorRunUncheckedCreateInput
+): Promise<void> {
   try {
     await prisma.collectorRun.create({ data });
   } catch (e) {

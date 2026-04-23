@@ -10,6 +10,7 @@ import {
   personalizeForStore,
   saveInfluencerMatches,
 } from "@/lib/ai";
+import type { RawTrend, Store, Trend } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hydrateTrend } from "@/lib/utils/prisma-helpers";
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     switch (body.action) {
       case "classify": {
-        const trend = await loadRawTrend(body.trendId, body.trend);
+        const trend = await loadRawTrend(body.trendId, body.trend as RawTrend | undefined);
         const result = await classifyTrend(trend);
         return NextResponse.json(result);
       }
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest) {
       }
 
       case "generate-content": {
-        const trend = await loadAiTrend(body.trendId, body.trend);
-        const store = body.store ? body.store : mapUserStoreToAiStore(dbUser);
+        const trend = await loadAiTrend(body.trendId, body.trend as Trend | undefined);
+        const store = body.store ? (body.store as Store) : mapUserStoreToAiStore(dbUser);
         const items = await generateContent(trend, store);
 
         if (body.persist && body.trendId) {
@@ -100,17 +101,17 @@ export async function POST(req: NextRequest) {
 
       case "personalize": {
         const trends = body.trends?.length
-          ? body.trends
+          ? (body.trends as Trend[])
           : body.trendId
             ? [await loadAiTrend(body.trendId, undefined)]
             : [];
-        const store = body.store ? body.store : mapUserStoreToAiStore(dbUser);
-        const ranked = await personalizeForStore(trends as any, store);
+        const store = body.store ? (body.store as Store) : mapUserStoreToAiStore(dbUser);
+        const ranked = await personalizeForStore(trends, store);
         return NextResponse.json({ ranked });
       }
 
       case "match-influencers": {
-        const trend = await loadAiTrend(body.trendId, body.trend);
+        const trend = await loadAiTrend(body.trendId, body.trend as Trend | undefined);
         const matches = await matchInfluencers(trend, body.budget ?? 0);
 
         if (body.persist && body.trendId) {
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function loadRawTrend(trendId?: string, trend?: Record<string, unknown>) {
+async function loadRawTrend(trendId?: string, trend?: RawTrend): Promise<RawTrend> {
   if (trendId) {
     const dbTrend = await prisma.trend.findUnique({ where: { id: trendId } });
     if (!dbTrend) throw new Error("Trend not found");
@@ -157,11 +158,11 @@ async function loadRawTrend(trendId?: string, trend?: Record<string, unknown>) {
   return trend;
 }
 
-async function loadAiTrend(trendId?: string, trend?: Record<string, unknown>) {
+async function loadAiTrend(trendId?: string, trend?: Trend): Promise<Trend> {
   if (trendId) {
     const dbTrend = await prisma.trend.findUnique({ where: { id: trendId } });
     if (!dbTrend) throw new Error("Trend not found");
-    return mapDbTrendToAiTrend(hydrateTrend(dbTrend as never));
+    return mapDbTrendToAiTrend(hydrateTrend(dbTrend));
   }
 
   if (!trend) throw new Error("trend or trendId is required");

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { stripe, getOrCreateStripeCustomer } from "@/lib/stripe/client";
+import { getStripeClient, getOrCreateStripeCustomer } from "@/lib/stripe/client";
 import { getPriceId, type PlanId } from "@/lib/stripe/plans";
 import { z } from "zod";
 
@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
 
     const dbUser = await prisma.user.findUnique({ where: { supabaseId: user.id } });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const stripe = getStripeClient();
 
     const priceId = getPriceId(plan as PlanId);
     if (!priceId) {

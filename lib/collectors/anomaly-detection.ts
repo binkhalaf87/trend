@@ -68,7 +68,7 @@ export function detectAnomalies(
 ): AnomalyResult[] {
   const results: AnomalyResult[] = [];
 
-  for (const [trendId, { titleEn, points }] of dataByTrend) {
+  for (const [trendId, { titleEn, points }] of Array.from(dataByTrend.entries())) {
     const result = detectAnomaly(trendId, titleEn, points);
     if (result) results.push(result);
   }

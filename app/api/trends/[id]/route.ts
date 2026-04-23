@@ -35,12 +35,12 @@ export async function GET(
 
     if (!trend) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const hydratedTrend = hydrateTrend(trend as never);
-    const content = trend.content.map((item) => hydrateTrendContent(item as never));
-    const influencerMatches = trend.influencerMatches.map((match) => ({
-      ...match,
-      influencer: hydrateInfluencer(match.influencer as never),
-    }));
+  const hydratedTrend = hydrateTrend(trend);
+  const content = trend.content.map((item) => hydrateTrendContent(item));
+  const influencerMatches = trend.influencerMatches.map((match) => ({
+    ...match,
+    influencer: hydrateInfluencer(match.influencer),
+  }));
     const history = buildTrendHistory(hydratedTrend);
 
     return NextResponse.json({

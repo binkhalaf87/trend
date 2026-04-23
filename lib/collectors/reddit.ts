@@ -83,7 +83,7 @@ function processRedditPosts(
 
   const results: RawTrendData[] = [];
 
-  for (const [keyword, relatedPosts] of grouped) {
+  for (const [keyword, relatedPosts] of Array.from(grouped.entries())) {
     const totalScore = relatedPosts.reduce((s, p) => s + p.score, 0);
     const totalComments = relatedPosts.reduce((s, p) => s + p.num_comments, 0);
     const avgUpvoteRatio = relatedPosts.reduce((s, p) => s + p.upvote_ratio, 0) / relatedPosts.length;
@@ -93,7 +93,7 @@ function processRedditPosts(
     const hasCommercialSignal = isCommercialQuery(combined);
     if (!hasCommercialSignal && totalScore < 100) continue;
 
-    const subreddits = [...new Set(relatedPosts.map((p) => p.subreddit))];
+    const subreddits = Array.from(new Set(relatedPosts.map((p) => p.subreddit)));
     const sourceUrls = relatedPosts
       .slice(0, 3)
       .map((p) => `${REDDIT_BASE}${p.permalink}`);
@@ -137,7 +137,6 @@ const STOP_WORDS = new Set([
 function extractMainKeyword(title: string): string {
   // Remove emojis and special chars, keep alphanumeric + Arabic
   const cleaned = title
-    .replace(/[\u{1F600}-\u{1F64F}]/gu, "")
     .replace(/[^\w\s\u0600-\u06FF]/g, " ")
     .trim();
 
@@ -161,7 +160,7 @@ function extractKeywordsFromPosts(posts: RedditPost[]): string[] {
     }
   }
 
-  return [...freq.entries()]
+  return Array.from(freq.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([w]) => w);

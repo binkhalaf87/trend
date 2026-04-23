@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
-      trends: trends.map((trend) => hydrateTrend(trend as never)),
+      trends: trends.map((trend) => hydrateTrend(trend)),
       total,
       offset: query.offset,
       limit: query.limit,

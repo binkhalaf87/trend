@@ -1,13 +1,21 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set");
-}
+let stripeClient: Stripe | null = null;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true,
-});
+export function getStripeClient() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("STRIPE_SECRET_KEY is not set");
+  }
+
+  if (!stripeClient) {
+    stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2025-02-24.acacia",
+      typescript: true,
+    });
+  }
+
+  return stripeClient;
+}
 
 /** الحصول على customer ID أو إنشاء واحد جديد */
 export async function getOrCreateStripeCustomer(
@@ -15,6 +23,7 @@ export async function getOrCreateStripeCustomer(
   email: string,
   name?: string | null
 ): Promise<string> {
+  const stripe = getStripeClient();
   const { prisma } = await import("@/lib/prisma");
 
   // هل يوجد بالفعل؟

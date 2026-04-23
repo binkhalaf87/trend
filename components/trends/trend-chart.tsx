@@ -47,10 +47,15 @@ export function TrendChart({ data }: { data: TrendHistoryPoint[] }) {
               boxShadow: "0 16px 40px rgba(15,23,42,0.10)",
               background: "rgba(255,255,255,0.96)",
             }}
-            formatter={(value: number, key) => [
-              key === "signalStrength" ? `${value}%` : value,
-              key === "signalStrength" ? "قوة الإشارة" : "حجم البحث",
-            ]}
+            formatter={(value) => {
+              const numericValue = Array.isArray(value)
+                ? Number(value[0] ?? 0)
+                : typeof value === "number"
+                  ? value
+                  : Number(value ?? 0);
+
+              return [`${Number.isFinite(numericValue) ? numericValue : 0}%`, "قوة الإشارة"];
+            }}
             labelFormatter={(label) => `التاريخ: ${label}`}
           />
 

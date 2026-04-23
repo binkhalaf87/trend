@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { AnomalyResult } from "./types";
 import { mapDbTrendToAiTrend, mapUserStoreToAiStore, personalizeForStore } from "@/lib/ai";
 import { hydrateTrend } from "@/lib/utils/prisma-helpers";
+import type { AlertChannel } from "@/types/db";
 
 // ─── Main: create alerts for all users who should be notified ─────────────────
 
@@ -52,7 +53,7 @@ export async function sendTrendAlerts(): Promise<{
   for (const user of users) {
     const aiStore = mapUserStoreToAiStore(user);
     const rankedTrends = await personalizeForStore(
-      recentTrends.map((trend) => mapDbTrendToAiTrend(hydrateTrend(trend as never))),
+    recentTrends.map((trend) => mapDbTrendToAiTrend(hydrateTrend(trend))),
       aiStore
     );
     const rankedMap = new Map(rankedTrends.map((trend) => [trend.id, trend]));
@@ -125,6 +126,8 @@ export async function sendTrendAlerts(): Promise<{
 // ─── Send weekly digest alerts ────────────────────────────────────────────────
 
 export async function sendWeeklyDigest(): Promise<void> {
+  const digestChannels: AlertChannel[] = ["EMAIL", "IN_APP"];
+
   const topTrends = await prisma.trend.findMany({
     where: {
       status: { in: ["RISING", "PEAK"] },
@@ -166,7 +169,7 @@ export async function sendWeeklyDigest(): Promise<void> {
           .slice(0, 5)
           .map((t, i) => `${i + 1}. ${t.titleAr} (قوة الإشارة: ${t.signalStrength})`)
           .join("\n"),
-        sentVia: ["EMAIL", "IN_APP"],
+        sentVia: digestChannels,
         sentAt: new Date(),
         metadata: {
           trendIds: topTrends.map((t) => t.id),
@@ -184,6 +187,7 @@ export async function notifyAdminOnFailure(
   error: string
 ): Promise<void> {
   try {
+    const adminChannels: AlertChannel[] = ["EMAIL", "IN_APP"];
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) return;
 
@@ -200,7 +204,7 @@ export async function notifyAdminOnFailure(
         type: "NEW_TREND",
         messageAr: `⚠️ فشل جامع البيانات: ${source}`,
         detailsAr: error.slice(0, 500),
-        sentVia: ["EMAIL", "IN_APP"],
+        sentVia: adminChannels,
         sentAt: new Date(),
         metadata: { isAdminAlert: true, source, error },
       },
@@ -216,8 +220,8 @@ function buildChannels(user: {
   notifyByEmail: boolean;
   notifyByPush: boolean;
   notifyByWhatsapp: boolean;
-}): string[] {
-  const channels: string[] = ["IN_APP"];
+}): AlertChannel[] {
+  const channels: AlertChannel[] = ["IN_APP"];
   if (user.notifyByEmail) channels.push("EMAIL");
   if (user.notifyByPush) channels.push("PUSH");
   if (user.notifyByWhatsapp) channels.push("WHATSAPP");
