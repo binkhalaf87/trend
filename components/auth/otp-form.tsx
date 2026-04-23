@@ -56,12 +56,25 @@ export function OtpForm({ email, onBack }: OtpFormProps) {
         type: "email",
       });
       if (error) throw error;
-      router.push("/dashboard");
+
+      const syncResponse = await fetch("/api/auth/sync-user", {
+        method: "POST",
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error("Failed to sync signed-in user");
+      }
+
+      const { redirectTo } = (await syncResponse.json()) as {
+        redirectTo?: string;
+      };
+
+      router.replace(redirectTo ?? "/dashboard");
       router.refresh();
     } catch (err: any) {
       toast({
         title: "رمز خاطئ",
-        description: "يرجى التحقق من الرمز والمحاولة مجدداً",
+        description: err?.message ?? "يرجى التحقق من الرمز والمحاولة مجدداً",
         variant: "destructive",
       });
       setOtp(["", "", "", "", "", ""]);

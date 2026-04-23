@@ -1,0 +1,25 @@
+
+> trendzone@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 7.9s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 1740ms (167 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 14.7s (820 modules)
+ GET /login 200 in 15371ms
+ GET /register 200 in 15386ms
+ ✓ Compiled in 1527ms (387 modules)
+ HEAD /login 200 in 84ms
+ HEAD /register 200 in 125ms
+ ✓ Compiled in 1360ms (554 modules)
+ ✓ Compiled in 420ms (387 modules)
+ ✓ Compiled in 291ms (387 modules)
+ ○ Compiling /api/auth/sync-user ...
+ ✓ Compiled /api/auth/sync-user in 1315ms (164 modules)
+ POST /api/auth/sync-user 401 in 1710ms

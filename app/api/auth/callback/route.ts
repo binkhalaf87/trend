@@ -21,6 +21,15 @@ export async function GET(req: NextRequest) {
 
       // هل أتمّ الـ onboarding؟
       const onboarded = await isOnboardingComplete(data.user.id);
+      if (data.user.user_metadata?.onboarding_completed !== onboarded) {
+        await supabase.auth.updateUser({
+          data: {
+            ...data.user.user_metadata,
+            onboarding_completed: onboarded,
+          },
+        });
+      }
+
       const redirectTo = onboarded ? next : "/onboarding";
 
       return NextResponse.redirect(`${origin}${redirectTo}`);
