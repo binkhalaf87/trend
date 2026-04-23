@@ -10,6 +10,7 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { OtpForm } from "@/components/auth/otp-form";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { getAuthCallbackUrl } from "@/lib/site-url";
 
 type Step = "form" | "otp";
 
@@ -31,7 +32,7 @@ export function RegisterForm() {
         options: {
           shouldCreateUser: true,
           data: { name: name.trim() },
-          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+          emailRedirectTo: getAuthCallbackUrl(),
         },
       });
       if (error) throw error;
@@ -48,7 +49,7 @@ export function RegisterForm() {
   };
 
   if (step === "otp") {
-    return <OtpForm email={email} onBack={() => setStep("form")} />;
+    return <OtpForm email={email} flow="register" name={name} onBack={() => setStep("form")} />;
   }
 
   return (

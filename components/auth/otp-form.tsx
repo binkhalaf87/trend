@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
+import { getAuthCallbackUrl } from "@/lib/site-url";
 
 interface OtpFormProps {
   email: string;
+  flow: "login" | "register";
+  name?: string;
   onBack: () => void;
 }
 
-export function OtpForm({ email, onBack }: OtpFormProps) {
+export function OtpForm({ email, flow, name, onBack }: OtpFormProps) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -87,7 +90,16 @@ export function OtpForm({ email, onBack }: OtpFormProps) {
   const resendOtp = async () => {
     setResending(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: flow === "register",
+          emailRedirectTo: getAuthCallbackUrl(),
+          ...(flow === "register" && name?.trim()
+            ? { data: { name: name.trim() } }
+            : {}),
+        },
+      });
       if (error) throw error;
       toast({ title: "تم إعادة الإرسال", description: "تحقق من بريدك الإلكتروني" });
     } catch {

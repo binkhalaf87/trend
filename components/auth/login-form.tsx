@@ -10,6 +10,7 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { OtpForm } from "@/components/auth/otp-form";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { getAuthCallbackUrl } from "@/lib/site-url";
 
 type Step = "email" | "otp";
 
@@ -27,7 +28,10 @@ export function LoginForm() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        options: { shouldCreateUser: false },
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: getAuthCallbackUrl(),
+        },
       });
       if (error) {
         // إذا لم يكن المستخدم موجوداً
@@ -54,7 +58,7 @@ export function LoginForm() {
   };
 
   if (step === "otp") {
-    return <OtpForm email={email} onBack={() => setStep("email")} />;
+    return <OtpForm email={email} flow="login" onBack={() => setStep("email")} />;
   }
 
   return (

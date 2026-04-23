@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getAuthCallbackUrl } from "@/lib/site-url";
 
 export function GoogleButton({ label = "المتابعة بـ Google" }: { label?: string }) {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,7 @@ export function GoogleButton({ label = "المتابعة بـ Google" }: { label
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
+        redirectTo: getAuthCallbackUrl(),
         queryParams: { access_type: "offline", prompt: "consent" },
       },
     });
