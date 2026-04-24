@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
         growthRate: true,
         summaryAr: true,
         redditVotes: true,
+        keywords: true,
+        relatedProducts: true,
+        sourceUrls: true,
       },
     });
 
