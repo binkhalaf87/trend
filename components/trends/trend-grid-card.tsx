@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Clock3, Flame, Layers3, TrendingUp } from "lucide-react";
+import { ArrowLeft, Clock3, Flame, Layers3, TrendingUp, ArrowBigUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -24,6 +24,7 @@ export type TrendGridCardItem = {
   growthRate: number;
   peakExpectedAt: Date | null;
   sources: TrendSource[];
+  redditVotes?: number;
 };
 
 export function TrendGridCard({ trend }: { trend: TrendGridCardItem }) {
@@ -108,6 +109,15 @@ export function TrendGridCard({ trend }: { trend: TrendGridCardItem }) {
           </div>
         </div>
       </CardContent>
+
+      {(trend.redditVotes ?? 0) > 0 && (
+        <div className="mx-5 mb-3 flex items-center gap-2 rounded-[18px] border border-orange-200/60 bg-orange-50/60 px-3 py-2 dark:border-orange-500/20 dark:bg-orange-500/10">
+          <ArrowBigUp className="h-4 w-4 text-orange-500" />
+          <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+            {trend.redditVotes} تصويت Reddit
+          </span>
+        </div>
+      )}
 
       <CardFooter className="grid grid-cols-2 gap-3 p-5 pt-0">
         <Button asChild className="rounded-full bg-[#534AB7] text-white hover:bg-[#4d44ad]">

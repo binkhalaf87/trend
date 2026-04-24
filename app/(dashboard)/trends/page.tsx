@@ -102,6 +102,7 @@ export default async function TrendsPage({ searchParams }: TrendsPageProps) {
                 sources: [trend.source, ...trend.extraSources]
                   .filter((source): source is TrendSource => source !== null)
                   .slice(0, 3),
+                redditVotes: trend.redditVotes ?? 0,
               }}
             />
           ))}

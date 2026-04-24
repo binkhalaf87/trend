@@ -14,14 +14,19 @@ export default async function OnboardingPage() {
   if (!authUser) redirect("/login");
   if (!authUser.email) redirect("/login?error=missing_email");
 
-  await ensureUserInDb(
-    authUser.id,
-    authUser.email,
-    authUser.user_metadata?.name ?? authUser.user_metadata?.full_name
-  );
+  try {
+    await ensureUserInDb(
+      authUser.id,
+      authUser.email,
+      authUser.user_metadata?.name ?? authUser.user_metadata?.full_name
+    );
 
-  const complete = await isOnboardingComplete(authUser!.id);
-  if (complete) redirect("/dashboard");
+    const complete = await isOnboardingComplete(authUser.id);
+    if (complete) redirect("/dashboard");
+  } catch (err) {
+    console.error("[OnboardingPage] db error:", err);
+    // اعرض صفحة الـ onboarding حتى لو فشل الـ DB sync — المستخدم مسجّل دخوله
+  }
 
   return (
     <Card className="shadow-sm">

@@ -226,6 +226,9 @@ model Trend {
   imageUrl         String?
   videoUrl         String?
 
+  // تصويتات Reddit
+  redditVotes      Int           @default(0)
+
   // توقيت
   detectedAt       DateTime      @default(now())
   createdAt        DateTime      @default(now())
