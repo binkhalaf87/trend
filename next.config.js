@@ -9,6 +9,7 @@ const nextConfig = {
   // Prisma يعمل فقط على server side — لا يُدرَج في client bundle
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "prisma"],
+    instrumentationHook: true,
   },
   // إخفاء TypeScript errors لا تمنع البناء على Vercel (optional)
   typescript: {
